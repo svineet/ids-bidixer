@@ -90,9 +90,10 @@ def scrape_words(lg_id, lg_id2):
                     if w != '--' and w2 != '--' and all([w, w2]):
                         comment1, p1 = process_word(w)
                         comment2, p2 = process_word(w2)
-                        data.append((p1+grammar_info,
-                                     p2+grammar_info,
-                                     comment1+comment2))
+                        if p1 and p2:
+                            data.append((p1+grammar_info,
+                                         p2+grammar_info,
+                                         comment1+comment2))
 
     return (data, lg1, lg2)
 
