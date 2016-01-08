@@ -37,8 +37,12 @@ def scrape_words(lg_id, lg_id2):
         for (lword, rword, eng_word) in zip(lword_out.select('tr > td'),
                                             rword_out.select('tr > td'),
                                             english.select('tr > td')):
-            lwords = lword.text.strip().replace(',', ';').split(';')
-            rwords = rword.text.strip().replace(',', ';').split(';')
+            lwords = lword.text.strip().replace('/', ';')\
+                                       .replace(',', ';')\
+                                       .split(';')
+            rwords = rword.text.strip().replace('/', ';')\
+                                       .replace(',', ';')\
+                                       .split(';')
             lwords = map(lambda x: x.strip(), lwords)
             rwords = map(lambda x: x.strip(), rwords)
 
