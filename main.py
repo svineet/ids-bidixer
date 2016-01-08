@@ -9,11 +9,17 @@ import re
 
 IDS_URL = "http://lingweb.eva.mpg.de/cgi-bin/ids/ids.pl?"\
           "com=simple_browse&lg_id={}"
+EXTRA_BRACKET_INFO = re.compile(r'(.*)\s?\((.*)\)')
 
 
 def process_word(word):
+    commenting = EXTRA_BRACKET_INFO.match(word)
+    com = ""
+    if commenting:
+        word, com = commenting.groups()
+
     word = re.sub(r'\s', '<b/>', word)
-    return word
+    return (com, word)
 
 
 def scrape_words(lg_id, lg_id2):
@@ -31,8 +37,30 @@ def scrape_words(lg_id, lg_id2):
     soupr = BeautifulSoup(p2.text, 'lxml')
 
     data = []
-    for (lword_out, rword_out, english) in zip(soupl.select("#data_1"),
-                                               soupr.select("#data_1"),
+    selector2 = selector1 = "#data_1"
+    lg1 = soupl.select('a')[0].text
+    lg2 = soupr.select('a')[0].text
+
+    if lg1 == 'rus':
+        selector1 = '#russian'
+    if lg1 == 'por':
+        selector1 = '#portugese'
+    if lg1 == 'fra':
+        selector1 = '#french'
+    if lg1 == 'spa':
+        selector1 = '#spanish'
+
+    if lg2 == 'rus':
+        selector2 = '#russian'
+    if lg2 == 'por':
+        selector2 = '#portugese'
+    if lg2 == 'fra':
+        selector2 = '#french'
+    if lg2 == 'spa':
+        selector2 = '#spanish'
+
+    for (lword_out, rword_out, english) in zip(soupl.select(selector1),
+                                               soupr.select(selector2),
                                                soupr.select("#english")):
         for (lword, rword, eng_word) in zip(lword_out.select('tr > td'),
                                             rword_out.select('tr > td'),
@@ -60,10 +88,13 @@ def scrape_words(lg_id, lg_id2):
             for w in lwords:
                 for w2 in rwords:
                     if w != '--' and w2 != '--' and all([w, w2]):
-                        data.append((process_word(w)+grammar_info,
-                                     process_word(w2)+grammar_info))
+                        comment1, p1 = process_word(w)
+                        comment2, p2 = process_word(w2)
+                        data.append((p1+grammar_info,
+                                     p2+grammar_info,
+                                     comment1+comment2))
 
-    return (data, soupl.select('a')[0].text, soupr.select('a')[0].text)
+    return (data, lg1, lg2)
 
 
 def bidix_output(data):
@@ -74,9 +105,19 @@ def bidix_output(data):
     <section id="main" type="standard">
 """
 
-    for (key, value) in data:
-        content += """    <e><p><l>{}</l> <r>{}</r></p></e> \n""".format(key,
-                                                                         value)
+    for (key, value, comment) in data:
+        if '(' in key or '(' in value:
+            content += "    <!-- gave up on: "
+            content += """    <e><p><l>{}</l> <r>{}</r></p></e> -->"""\
+                .format(key,
+                        value)
+        else:
+            content += """    <e><p><l>{}</l> <r>{}</r></p></e>""".format(key,
+                                                                          value)
+        if comment:
+            content += """  <!-- {} --> \n""".format(comment)
+        else:
+            content += "\n"
 
     content += """
     </section>
