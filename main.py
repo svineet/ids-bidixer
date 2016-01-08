@@ -11,13 +11,6 @@ IDS_URL = "http://lingweb.eva.mpg.de/cgi-bin/ids/ids.pl?"\
           "com=simple_browse&lg_id={}"
 
 
-def combine(d1, d2):
-    data = {}
-    for (key, value) in d1.items():
-        data[value] = d2[key]
-    return data
-
-
 def process_word(word):
     word = re.sub(r'\s', '<b/>', word)
     return word
@@ -38,21 +31,33 @@ def scrape_words(lg_id, lg_id2):
     soupr = BeautifulSoup(p2.text, 'lxml')
 
     data = []
-    for (lword_out, rword_out) in zip(soupl.select("#data_1"),
-                                      soupr.select("#data_1")):
-        for (lword, rword) in zip(lword_out.select('tr > td'),
-                                  rword_out.select('tr > td')):
+    for (lword_out, rword_out, english) in zip(soupl.select("#data_1"),
+                                               soupr.select("#data_1"),
+                                               soupr.select("#english")):
+        for (lword, rword, eng_word) in zip(lword_out.select('tr > td'),
+                                            rword_out.select('tr > td'),
+                                            english.select('tr > td')):
             lwords = lword.text.strip().replace(',', ';').split(';')
             rwords = rword.text.strip().replace(',', ';').split(';')
             lwords = map(lambda x: x.strip(), lwords)
             rwords = map(lambda x: x.strip(), rwords)
 
+            grammar_info = ""
+            if 'noun' in eng_word.text:
+                grammar_info += '<s n="n"/>'
+            if 'vb' in eng_word.text:
+                grammar_info += '<s n="vblex"/>'
+            if 'trans' in eng_word.text:
+                grammar_info += '<s n="tv"/>'
+            if 'intrans' in eng_word.text:
+                grammar_info += '<s n="iv"/>'
+
             # Split multiple words in one definition by ';'
             for w in lwords:
                 for w2 in rwords:
                     if w != '--' and w2 != '--' and all([w, w2]):
-                        data.append((process_word(w),
-                                     process_word(w2)))
+                        data.append((process_word(w)+grammar_info,
+                                     process_word(w2)+grammar_info))
 
     return (data, soupl.select('a')[0].text, soupr.select('a')[0].text)
 
